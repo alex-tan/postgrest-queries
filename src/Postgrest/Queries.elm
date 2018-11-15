@@ -16,6 +16,8 @@ module Postgrest.Queries exposing
     , neq
     , normalizeParams
     , order
+    , or
+    , and
     , param
     , resource
     , select
@@ -44,6 +46,8 @@ module Postgrest.Queries exposing
 @docs neq
 @docs normalizeParams
 @docs order
+@docs or
+@docs and
 @docs param
 @docs resource
 @docs select
@@ -75,6 +79,18 @@ type PostgrestParam
     | Select (List PostgrestSelectable)
     | Limit Int
     | Order ColumnOrder
+    | Or (List PostgrestParam)
+    | And (List PostgrestParam)
+
+
+or : List PostgrestParam -> PostgrestParam
+or =
+    Or
+
+
+and : List PostgrestParam -> PostgrestParam
+and =
+    And
 
 
 {-| A constructor for an individual postgrest parameter.
@@ -230,9 +246,9 @@ gte =
 
 {-| Used to indicate you need a column to be within a certain list of values.
 -}
-inList : List PostgrestValue -> PostgrestClause
-inList l =
-    In <| List l
+inList : (a -> PostgrestValue) -> List a -> PostgrestClause
+inList toPostgrestValue l =
+    In <| List <| List.map toPostgrestValue l
 
 
 {-| When you don't want to use a specific type after the equals sign in the query, you
@@ -317,6 +333,12 @@ postgrestParamKey p =
         Select _ ->
             "select"
 
+        Or _ ->
+            "or"
+
+        And _ ->
+            "and"
+
         Order _ ->
             "order"
 
@@ -335,6 +357,18 @@ postgrestParamValue p =
         Limit i ->
             String.fromInt i
 
+        Or conditions ->
+            conditions
+                |> List.map postgrestParamValue
+                |> String.join ","
+                |> surroundInParens
+
+        And conditions ->
+            conditions
+                |> List.map postgrestParamValue
+                |> String.join ","
+                |> surroundInParens
+
         Order o ->
             case o of
                 Asc field ->
@@ -342,6 +376,11 @@ postgrestParamValue p =
 
                 Desc field ->
                     field ++ ".desc"
+
+
+surroundInParens : String -> String
+surroundInParens s =
+    "(" ++ s ++ ")"
 
 
 stringifyClause : PostgrestClause -> String
