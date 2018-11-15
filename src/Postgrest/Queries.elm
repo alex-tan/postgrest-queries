@@ -1,14 +1,10 @@
 module Postgrest.Queries exposing
-    ( Params
-    , PostgrestParam
-    , PostgrestParams
-    , PostgrestSelectable
+    ( PostgrestParam, PostgrestParams, PostgrestSelectable
     , allAttributes
     , attribute
     , attributes
     , combineParams
     , desc
-    , dictifyParams
     , eq
     , gt
     , gte
@@ -26,7 +22,37 @@ module Postgrest.Queries exposing
     , string
     , true
     , value
+    , ColumnOrder
     )
+
+{-|
+
+@docs PostgrestParam, PostgrestParams, PostgrestSelectable
+@docs allAttributes
+@docs attribute
+@docs attributes
+@docs combineParams
+@docs desc
+@docs eq
+@docs gt
+@docs gte
+@docs inList
+@docs int
+@docs limit
+@docs lt
+@docs lte
+@docs neq
+@docs normalizeParams
+@docs order
+@docs param
+@docs resource
+@docs select
+@docs string
+@docs true
+@docs value
+@docs ColumnOrder
+
+-}
 
 import Dict exposing (Dict)
 import Url
@@ -36,10 +62,14 @@ type alias Params =
     List ( String, String )
 
 
+{-| A collection of parameters that make up a postgrest request.
+-}
 type alias PostgrestParams =
     List PostgrestParam
 
 
+{-| An individual postgrest parameter.
+-}
 type PostgrestParam
     = Param String PostgrestClause
     | Select (List PostgrestSelectable)
@@ -47,49 +77,103 @@ type PostgrestParam
     | Order ColumnOrder
 
 
+{-| A constructor for an individual postgrest parameter.
+
+    param "name" (eq (string "John"))
+
+-}
+param : String -> PostgrestClause -> PostgrestParam
 param =
     Param
 
 
+{-| A constructor for the select parameter.
+
+    P.select
+        [ P.attribute "id"
+        , P.attribute "title"
+        , P.resource "user" <|
+            P.attributes
+                [ "email"
+                , "name"
+                ]
+        ]
+
+-}
+select : List PostgrestSelectable -> PostgrestParam
 select =
     Select
 
 
+{-| A constructor for the limit parameter.
+
+    limit 10
+
+-}
+limit : Int -> PostgrestParam
 limit =
     Limit
 
 
+{-| A constructor for the limit parameter.
+
+    order (asc "name")
+
+    order (desc "name")
+
+-}
+order : ColumnOrder -> PostgrestParam
 order =
     Order
 
 
+{-| Strings, ints and lists need to be normalized into postgrest values
+so that the library can format them correctly in our queries.
+-}
 type PostgrestValue
     = String String
     | Int Int
     | List (List PostgrestValue)
 
 
+{-| Normalize a string into a postgrest value.
+-}
+string : String -> PostgrestValue
 string =
     String
 
 
+{-| Normalize an int into a postgrest value.
+-}
+int : Int -> PostgrestValue
 int =
     Int
 
 
+{-| A type to specify whether you want an order to be ascending or descending.
+-}
 type ColumnOrder
     = Asc String
     | Desc String
 
 
+{-| Used in combination with `order` to sort results ascending.
+-}
+asc : String -> ColumnOrder
 asc =
     Asc
 
 
+{-| Used in combination with `order` to sort results descending.
+-}
+desc : String -> ColumnOrder
 desc =
     Desc
 
 
+{-| A type that represents the clause of a query. In `name=eq.John` the clause would be the part
+after the equal sign.
+-}
 type PostgrestClause
     = Eq PostgrestValue
     | Neq PostgrestValue
@@ -102,38 +186,66 @@ type PostgrestClause
     | True
 
 
+{-| Used to indicate you need a column to be equal to a certain value.
+-}
+eq : PostgrestValue -> PostgrestClause
 eq =
     Eq
 
 
+{-| Used to indicate you need a column to be not equal to a certain value.
+-}
+neq : PostgrestValue -> PostgrestClause
 neq =
     Neq
 
 
+{-| Used to indicate you need a column to be less than a certain value.
+-}
+lt : Float -> PostgrestClause
 lt =
     LT
 
 
+{-| Used to indicate you need a column to be greater than a certain value.
+-}
+gt : Float -> PostgrestClause
 gt =
     GT
 
 
+{-| Used to indicate you need a column to be less than or equal than a certain value.
+-}
+lte : Float -> PostgrestClause
 lte =
     LTE
 
 
+{-| Used to indicate you need a column to be greater than or equal than a certain value.
+-}
+gte : Float -> PostgrestClause
 gte =
     GTE
 
 
+{-| Used to indicate you need a column to be within a certain list of values.
+-}
+inList : List PostgrestValue -> PostgrestClause
 inList l =
     In <| List l
 
 
+{-| When you don't want to use a specific type after the equals sign in the query, you
+can use `value` to set anything you want.
+-}
+value : PostgrestValue -> PostgrestClause
 value =
     Value
 
 
+{-| When you need a column value to be true
+-}
+true : PostgrestClause
 true =
     True
 
@@ -142,15 +254,23 @@ type alias ResourceName =
     String
 
 
+{-| A type representing which attributes and resources you want to select.
+-}
 type PostgrestSelectable
     = Attribute String
     | Resource ResourceName (List PostgrestSelectable)
 
 
+{-| When you want to select a certain column.
+-}
+attribute : String -> PostgrestSelectable
 attribute =
     Attribute
 
 
+{-| When you want to select a nested resource.
+-}
+resource : ResourceName -> List PostgrestSelectable -> PostgrestSelectable
 resource =
     Resource
 
@@ -160,11 +280,26 @@ list mapper l =
     List <| List.map mapper l
 
 
+{-| Shorthand for attributes, when you don't need to specify nested resources:
+
+    -- Short version
+    attributes [ "id" "name" ]
+
+    -- Long version
+    [ attribute "id"
+    , attribute "name"
+    ]
+
+-}
 attributes : List String -> List PostgrestSelectable
 attributes =
     List.map Attribute
 
 
+{-| When you want to select all attributes. This is only useful when used
+to select attributes of a resource or override default parameters in another function
+since postgrest returns all attributes by default.
+-}
 allAttributes : List PostgrestSelectable
 allAttributes =
     attributes [ "*" ]
@@ -295,11 +430,16 @@ dictifyParams =
     List.map (\p -> ( postgrestParamKey p, p )) >> Dict.fromList
 
 
+{-| Takes PostgrestParams and returns the parameters as a list of (Key, Value) strings.
+-}
 normalizeParams : PostgrestParams -> List ( String, String )
 normalizeParams =
     List.map (\p -> ( postgrestParamKey p, postgrestParamValue p ))
 
 
+{-| Takes a default set of params and a custom set of params and prefers the second set.
+Useful when you're constructing reusable functions that make similar queries.
+-}
 combineParams : PostgrestParams -> PostgrestParams -> PostgrestParams
 combineParams defaults override =
     Dict.union
