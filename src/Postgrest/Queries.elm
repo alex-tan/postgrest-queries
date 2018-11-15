@@ -83,11 +83,15 @@ type PostgrestParam
     | And (List PostgrestParam)
 
 
+{-| Join multiple conditions together with or.
+-}
 or : List PostgrestParam -> PostgrestParam
 or =
     Or
 
 
+{-| Join multiple conditions together with and.
+-}
 and : List PostgrestParam -> PostgrestParam
 and =
     And
