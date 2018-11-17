@@ -422,7 +422,7 @@ postgrestParamValue p =
 
 wrapConditions : PostgrestParams -> String
 wrapConditions =
-    List.map (normalizeParam >> paramToString)
+    List.map (normalizeParam >> paramToInnerString)
         >> String.join ","
         >> surroundInParens
 
@@ -547,6 +547,11 @@ combineParams defaults override =
 paramToString : ( String, String ) -> String
 paramToString ( k, v ) =
     k ++ "=" ++ v
+
+
+paramToInnerString : ( String, String ) -> String
+paramToInnerString ( k, v ) =
+    k ++ "." ++ v
 
 
 {-| Takes PostgrestParams and returns a query string such as
