@@ -406,16 +406,10 @@ postgrestParamValue p =
             String.fromInt i
 
         Or conditions ->
-            conditions
-                |> List.map postgrestParamValue
-                |> String.join ","
-                |> surroundInParens
+            wrapConditions conditions
 
         And conditions ->
-            conditions
-                |> List.map postgrestParamValue
-                |> String.join ","
-                |> surroundInParens
+            wrapConditions conditions
 
         Order o ->
             case o of
@@ -424,6 +418,13 @@ postgrestParamValue p =
 
                 Desc field ->
                     field ++ ".desc"
+
+
+wrapConditions : PostgrestParams -> String
+wrapConditions =
+    List.map (normalizeParam >> paramToString)
+        >> String.join ","
+        >> surroundInParens
 
 
 surroundInParens : String -> String
@@ -524,7 +525,12 @@ dictifyParams =
 -}
 normalizeParams : PostgrestParams -> List ( String, String )
 normalizeParams =
-    List.map (\p -> ( postgrestParamKey p, postgrestParamValue p ))
+    List.map normalizeParam
+
+
+normalizeParam : PostgrestParam -> ( String, String )
+normalizeParam p =
+    ( postgrestParamKey p, postgrestParamValue p )
 
 
 {-| Takes a default set of params and a custom set of params and prefers the second set.
