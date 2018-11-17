@@ -24,6 +24,7 @@ module Postgrest.Queries exposing
     , value
     , string
     , int
+    , list
     , order
     , asc
     , desc
