@@ -1,10 +1,13 @@
 module Postgrest.Queries exposing
-    ( PostgrestParam, PostgrestParams, PostgrestSelectable
+    ( PostgrestParam, PostgrestParams, PostgrestSelectable, ColumnOrder
+    , select
     , allAttributes
     , attribute
     , attributes
+    , resource
     , combineParams
-    , desc
+    , normalizeParams
+    , param
     , eq
     , gt
     , gte
@@ -14,27 +17,47 @@ module Postgrest.Queries exposing
     , lt
     , lte
     , neq
-    , normalizeParams
-    , order
     , or
     , and
-    , param
-    , resource
-    , select
     , string
     , true
     , value
-    , ColumnOrder
+    , order
+    , asc
+    , desc
+    , false, toQueryString
     )
 
 {-|
 
-@docs PostgrestParam, PostgrestParams, PostgrestSelectable
+
+# Types
+
+@docs PostgrestParam, PostgrestParams, PostgrestSelectable, ColumnOrder
+
+
+# Select
+
+@docs select
 @docs allAttributes
 @docs attribute
 @docs attributes
+@docs resource
+
+
+# Converting into something usable
+
 @docs combineParams
-@docs desc
+@docs normalizeParams
+
+
+# Param
+
+@docs param
+
+
+# Conditions
+
 @docs eq
 @docs gt
 @docs gte
@@ -44,17 +67,18 @@ module Postgrest.Queries exposing
 @docs lt
 @docs lte
 @docs neq
-@docs normalizeParams
-@docs order
 @docs or
 @docs and
-@docs param
-@docs resource
-@docs select
 @docs string
 @docs true
 @docs value
-@docs ColumnOrder
+
+
+# Order
+
+@docs order
+@docs asc
+@docs desc
 
 -}
 
@@ -204,6 +228,7 @@ type PostgrestClause
     | In PostgrestValue
     | Value PostgrestValue
     | True
+    | False
 
 
 {-| Used to indicate you need a column to be equal to a certain value.
@@ -267,6 +292,13 @@ value =
 -}
 true : PostgrestClause
 true =
+    True
+
+
+{-| When you need a column value to be false
+-}
+false : PostgrestClause
+false =
     True
 
 
@@ -405,6 +437,9 @@ stringifyClause clause =
         True ->
             "is.true"
 
+        False ->
+            "is.false"
+
         LT val ->
             "lt." ++ String.fromFloat val
 
@@ -489,3 +524,18 @@ combineParams defaults override =
         (dictifyParams override)
         (dictifyParams defaults)
         |> Dict.values
+
+
+paramToString : ( String, String ) -> String
+paramToString ( k, v ) =
+    k ++ "=" ++ v
+
+
+{-| Takes PostgrestParams and returns a query string such as
+`foo=eq.bar&baz=is.true`
+-}
+toQueryString : PostgrestParams -> String
+toQueryString =
+    normalizeParams
+        >> List.map paramToString
+        >> String.join "&"
