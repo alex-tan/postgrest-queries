@@ -13,17 +13,17 @@ module Postgrest.Queries exposing
     , gt
     , gte
     , inList
-    , int
     , limit
     , lt
     , lte
     , neq
     , or
     , and
-    , string
     , true
     , false
     , value
+    , string
+    , int
     , order
     , asc
     , desc
@@ -64,17 +64,22 @@ module Postgrest.Queries exposing
 @docs gt
 @docs gte
 @docs inList
-@docs int
 @docs limit
 @docs lt
 @docs lte
 @docs neq
 @docs or
 @docs and
-@docs string
 @docs true
 @docs false
 @docs value
+
+
+# Values
+
+@docs string
+@docs int
+@docs list
 
 
 # Order
@@ -330,9 +335,12 @@ resource =
     Resource
 
 
-list : (a -> PostgrestValue) -> List a -> PostgrestValue
-list mapper l =
-    List <| List.map mapper l
+{-| This is available if you need it, but more likely you'll want to use
+`inList`.
+-}
+list : List PostgrestValue -> PostgrestValue
+list values =
+    List values
 
 
 {-| Shorthand for attributes, when you don't need to specify nested resources:
