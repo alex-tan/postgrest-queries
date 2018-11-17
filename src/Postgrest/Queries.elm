@@ -7,6 +7,7 @@ module Postgrest.Queries exposing
     , resource
     , combineParams
     , normalizeParams
+    , toQueryString
     , param
     , eq
     , gt
@@ -26,7 +27,6 @@ module Postgrest.Queries exposing
     , order
     , asc
     , desc
-    , toQueryString
     )
 
 {-|
@@ -46,10 +46,11 @@ module Postgrest.Queries exposing
 @docs resource
 
 
-# Converting into something usable
+# Converting/combining into something usable
 
 @docs combineParams
 @docs normalizeParams
+@docs toQueryString
 
 
 # Param
