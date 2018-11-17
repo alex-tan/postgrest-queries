@@ -21,11 +21,12 @@ module Postgrest.Queries exposing
     , and
     , string
     , true
+    , false
     , value
     , order
     , asc
     , desc
-    , false, toQueryString
+    , toQueryString
     )
 
 {-|
@@ -71,6 +72,7 @@ module Postgrest.Queries exposing
 @docs and
 @docs string
 @docs true
+@docs false
 @docs value
 
 
