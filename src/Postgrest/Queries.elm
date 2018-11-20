@@ -1,5 +1,6 @@
 module Postgrest.Queries exposing
     ( PostgrestParam, PostgrestParams, PostgrestSelectable, ColumnOrder
+    , Operator
     , select
     , allAttributes
     , attribute
@@ -9,6 +10,9 @@ module Postgrest.Queries exposing
     , normalizeParams
     , toQueryString
     , param
+    , or
+    , and
+    , nestedParam
     , eq
     , gt
     , gte
@@ -17,17 +21,25 @@ module Postgrest.Queries exposing
     , lt
     , lte
     , neq
-    , or
-    , and
+    , not
     , true
     , false
+    , null
     , value
+    , offset
+    , ilike
+    , like
     , string
     , int
     , list
     , order
     , asc
     , desc
+    , nullsfirst
+    , nullslast
+    , plfts
+    , phfts
+    , fts
     )
 
 {-|
@@ -36,6 +48,7 @@ module Postgrest.Queries exposing
 # Types
 
 @docs PostgrestParam, PostgrestParams, PostgrestSelectable, ColumnOrder
+@docs Operator
 
 
 # Select
@@ -57,9 +70,12 @@ module Postgrest.Queries exposing
 # Param
 
 @docs param
+@docs or
+@docs and
+@docs nestedParam
 
 
-# Conditions
+# Operators
 
 @docs eq
 @docs gt
@@ -69,11 +85,14 @@ module Postgrest.Queries exposing
 @docs lt
 @docs lte
 @docs neq
-@docs or
-@docs and
+@docs not
 @docs true
 @docs false
+@docs null
 @docs value
+@docs offset
+@docs ilike
+@docs like
 
 
 # Values
@@ -88,6 +107,15 @@ module Postgrest.Queries exposing
 @docs order
 @docs asc
 @docs desc
+@docs nullsfirst
+@docs nullslast
+
+
+# Full-Text Search
+
+@docs plfts
+@docs phfts
+@docs fts
 
 -}
 
@@ -108,12 +136,39 @@ type alias PostgrestParams =
 {-| An individual postgrest parameter.
 -}
 type PostgrestParam
-    = Param String PostgrestClause
+    = Param String Operator
+    | NestedParam String PostgrestParam
     | Select (List PostgrestSelectable)
     | Limit Int
-    | Order ColumnOrder
+    | Offset Int
+    | Order (List ColumnOrder)
     | Or (List PostgrestParam)
     | And (List PostgrestParam)
+
+
+{-| When you want to specify an operator for a nested resource.
+
+    [ select
+        [ attribute "*"
+        , resource "actors" allAttributes
+        ]
+    , nestedParam "actors" <| limit 10
+    , nestedParam "actors" <| offset 2
+    ]
+    |> toQueryString
+    -- "select=*,actors(*)&actors.limit=10&actors.offset=2"
+
+-}
+nestedParam : String -> PostgrestParam -> PostgrestParam
+nestedParam =
+    NestedParam
+
+
+{-| Negate a condition.
+-}
+not : Operator -> Operator
+not =
+    Not
 
 
 {-| Join multiple conditions together with or.
@@ -135,7 +190,7 @@ and =
     param "name" (eq (string "John"))
 
 -}
-param : String -> PostgrestClause -> PostgrestParam
+param : String -> Operator -> PostgrestParam
 param =
     Param
 
@@ -168,6 +223,13 @@ limit =
     Limit
 
 
+{-| Offset
+-}
+offset : Int -> PostgrestParam
+offset =
+    Offset
+
+
 {-| A constructor for the limit parameter.
 
     order (asc "name")
@@ -175,7 +237,7 @@ limit =
     order (desc "name")
 
 -}
-order : ColumnOrder -> PostgrestParam
+order : List ColumnOrder -> PostgrestParam
 order =
     Order
 
@@ -183,22 +245,22 @@ order =
 {-| Strings, ints and lists need to be normalized into postgrest values
 so that the library can format them correctly in our queries.
 -}
-type PostgrestValue
+type Value
     = String String
     | Int Int
-    | List (List PostgrestValue)
+    | List (List Value)
 
 
 {-| Normalize a string into a postgrest value.
 -}
-string : String -> PostgrestValue
+string : String -> Value
 string =
     String
 
 
 {-| Normalize an int into a postgrest value.
 -}
-int : Int -> PostgrestValue
+int : Int -> Value
 int =
     Int
 
@@ -206,107 +268,222 @@ int =
 {-| A type to specify whether you want an order to be ascending or descending.
 -}
 type ColumnOrder
-    = Asc String
-    | Desc String
+    = Asc String (Maybe NullOption)
+    | Desc String (Maybe NullOption)
+
+
+type NullOption
+    = NullsFirst
+    | NullsLast
+
+
+{-| Sort nulls first.
+
+    order [ asc "age" |> nullsfirst ]
+
+-}
+nullsfirst : ColumnOrder -> ColumnOrder
+nullsfirst o =
+    case o of
+        Asc s _ ->
+            Asc s (Just NullsFirst)
+
+        Desc s _ ->
+            Desc s (Just NullsFirst)
+
+
+{-| Sort nulls last.
+
+    order [ asc "age" |> nullslast ]
+
+-}
+nullslast : ColumnOrder -> ColumnOrder
+nullslast o =
+    case o of
+        Asc s _ ->
+            Asc s (Just NullsLast)
+
+        Desc s _ ->
+            Desc s (Just NullsLast)
 
 
 {-| Used in combination with `order` to sort results ascending.
 -}
 asc : String -> ColumnOrder
-asc =
-    Asc
+asc s =
+    Asc s Nothing
 
 
 {-| Used in combination with `order` to sort results descending.
 -}
 desc : String -> ColumnOrder
-desc =
-    Desc
+desc s =
+    Desc s Nothing
 
 
 {-| A type that represents the clause of a query. In `name=eq.John` the clause would be the part
 after the equal sign.
 -}
-type PostgrestClause
-    = Eq PostgrestValue
-    | Neq PostgrestValue
-    | LT Float
+type Operator
+    = Eq Value
     | GT Float
-    | LTE Float
     | GTE Float
-    | In PostgrestValue
-    | Value PostgrestValue
+    | LT Float
+    | LTE Float
+    | Neq Value
+    | Like String
+    | Ilike String
+    | In Value
+    | Null
     | True
     | False
+    | Fts (Maybe Language) String
+    | Plfts (Maybe Language) String
+    | Phfts (Maybe Language) String
+      -- | Cs (List Value)
+      -- | Cd (List Value)
+      -- | Ov Range
+      -- | Sl Range
+      -- | Sr Range
+      -- | Nxr Range
+      -- | Nxl Range
+      -- | Adj Range
+    | Not Operator
+    | Value Value
+
+
+{-| LIKE operator (use \* in place of %)
+
+    param "text" <| like "foo*bar"
+
+-}
+like : String -> Operator
+like =
+    Like
+
+
+{-| ILIKE operator (use \* in place of %)
+
+    param "text" <| ilike "foo*bar"
+
+-}
+ilike : String -> Operator
+ilike =
+    Ilike
+
+
+{-| When a value needs to be null
+
+    param "age" <| null
+
+-}
+null : Operator
+null =
+    Null
+
+
+{-| Full-Text Search using to\_tsquery
+
+    [ param "my_tsv" <| fts (Just "french") "amusant" ]
+        |> toQueryString
+
+    "my_tsv=fts(french).amusant"
+
+-}
+fts : Maybe Language -> String -> Operator
+fts =
+    Fts
+
+
+{-| Full-Text Search using plainto\_tsquery
+-}
+plfts : Maybe Language -> String -> Operator
+plfts =
+    Plfts
+
+
+{-| Full-Text Search using phraseto\_tsquery
+-}
+phfts : Maybe Language -> String -> Operator
+phfts =
+    Phfts
+
+
+type alias Language =
+    String
+
+
+type alias Range =
+    ( Value, Value )
 
 
 {-| Used to indicate you need a column to be equal to a certain value.
 -}
-eq : PostgrestValue -> PostgrestClause
+eq : Value -> Operator
 eq =
     Eq
 
 
 {-| Used to indicate you need a column to be not equal to a certain value.
 -}
-neq : PostgrestValue -> PostgrestClause
+neq : Value -> Operator
 neq =
     Neq
 
 
 {-| Used to indicate you need a column to be less than a certain value.
 -}
-lt : Float -> PostgrestClause
+lt : Float -> Operator
 lt =
     LT
 
 
 {-| Used to indicate you need a column to be greater than a certain value.
 -}
-gt : Float -> PostgrestClause
+gt : Float -> Operator
 gt =
     GT
 
 
 {-| Used to indicate you need a column to be less than or equal than a certain value.
 -}
-lte : Float -> PostgrestClause
+lte : Float -> Operator
 lte =
     LTE
 
 
 {-| Used to indicate you need a column to be greater than or equal than a certain value.
 -}
-gte : Float -> PostgrestClause
+gte : Float -> Operator
 gte =
     GTE
 
 
 {-| Used to indicate you need a column to be within a certain list of values.
 -}
-inList : (a -> PostgrestValue) -> List a -> PostgrestClause
-inList toPostgrestValue l =
-    In <| List <| List.map toPostgrestValue l
+inList : (a -> Value) -> List a -> Operator
+inList toValue l =
+    In <| List <| List.map toValue l
 
 
 {-| When you don't want to use a specific type after the equals sign in the query, you
 can use `value` to set anything you want.
 -}
-value : PostgrestValue -> PostgrestClause
+value : Value -> Operator
 value =
     Value
 
 
 {-| When you need a column value to be true
 -}
-true : PostgrestClause
+true : Operator
 true =
     True
 
 
 {-| When you need a column value to be false
 -}
-false : PostgrestClause
+false : Operator
 false =
     True
 
@@ -339,7 +516,7 @@ resource =
 {-| This is available if you need it, but more likely you'll want to use
 `inList`.
 -}
-list : List PostgrestValue -> PostgrestValue
+list : List Value -> Value
 list values =
     List values
 
@@ -375,11 +552,17 @@ postgrestParamKey p =
         Limit i ->
             "limit"
 
+        Offset i ->
+            "offset"
+
         Param k _ ->
             k
 
         Select _ ->
             "select"
+
+        Order _ ->
+            "order"
 
         Or _ ->
             "or"
@@ -387,8 +570,8 @@ postgrestParamKey p =
         And _ ->
             "and"
 
-        Order _ ->
-            "order"
+        NestedParam r param_ ->
+            r ++ "." ++ postgrestParamKey param_
 
 
 postgrestParamValue : PostgrestParam -> String
@@ -405,19 +588,57 @@ postgrestParamValue p =
         Limit i ->
             String.fromInt i
 
-        Or conditions ->
-            wrapConditions conditions
+        Offset i ->
+            String.fromInt i
 
-        And conditions ->
-            wrapConditions conditions
+        Order os ->
+            os
+                |> List.map
+                    (\o ->
+                        case o of
+                            Asc field nullOption ->
+                                [ Just field
+                                , Just "asc"
+                                , stringifyNullOption nullOption
+                                ]
+                                    |> catMaybes
+                                    |> String.join "."
 
-        Order o ->
-            case o of
-                Asc field ->
-                    field ++ ".asc"
+                            Desc field nullOption ->
+                                [ Just field
+                                , Just "desc"
+                                , stringifyNullOption nullOption
+                                ]
+                                    |> catMaybes
+                                    |> String.join "."
+                    )
+                |> String.join ","
 
-                Desc field ->
-                    field ++ ".desc"
+        And c ->
+            wrapConditions c
+
+        Or c ->
+            wrapConditions c
+
+        NestedParam nestedResource nestedParam_ ->
+            postgrestParamValue nestedParam_
+
+
+stringifyNullOption : Maybe NullOption -> Maybe String
+stringifyNullOption =
+    Maybe.map
+        (\n_ ->
+            case n_ of
+                NullsFirst ->
+                    "nullsfirst"
+
+                NullsLast ->
+                    "nullslast"
+        )
+
+
+catMaybes =
+    List.filterMap identity
 
 
 wrapConditions : PostgrestParams -> String
@@ -432,9 +653,9 @@ surroundInParens s =
     "(" ++ s ++ ")"
 
 
-stringifyClause : PostgrestClause -> String
-stringifyClause clause =
-    case clause of
+stringifyClause : Operator -> String
+stringifyClause operator =
+    case operator of
         Neq val ->
             "neq." ++ stringifyUnquoted val
 
@@ -453,6 +674,9 @@ stringifyClause clause =
         False ->
             "is.false"
 
+        Null ->
+            "is.null"
+
         LT val ->
             "lt." ++ String.fromFloat val
 
@@ -465,18 +689,46 @@ stringifyClause clause =
         GTE val ->
             "gte." ++ String.fromFloat val
 
+        Not o ->
+            "not." ++ stringifyClause o
 
-stringifyUnquoted : PostgrestValue -> String
+        Fts lang val ->
+            fullTextSearch "fts" lang val
+
+        Like s ->
+            "like." ++ (stringifyQuoted <| string s)
+
+        Ilike s ->
+            "ilike." ++ (stringifyQuoted <| string s)
+
+        Plfts lang val ->
+            fullTextSearch "plfts" lang val
+
+        Phfts lang val ->
+            fullTextSearch "phfts" lang val
+
+
+fullTextSearch operator lang val =
+    operator
+        ++ (lang
+                |> Maybe.map surroundInParens
+                |> Maybe.withDefault ""
+           )
+        ++ "."
+        ++ stringifyValue Basics.False (string val)
+
+
+stringifyUnquoted : Value -> String
 stringifyUnquoted =
     stringifyValue Basics.False
 
 
-stringifyQuoted : PostgrestValue -> String
+stringifyQuoted : Value -> String
 stringifyQuoted =
     stringifyValue Basics.True
 
 
-stringifyValue : Bool -> PostgrestValue -> String
+stringifyValue : Bool -> Value -> String
 stringifyValue quotes val =
     case val of
         String str ->
@@ -551,7 +803,15 @@ paramToString ( k, v ) =
 
 paramToInnerString : ( String, String ) -> String
 paramToInnerString ( k, v ) =
-    k ++ "." ++ v
+    case k of
+        "and" ->
+            k ++ v
+
+        "or" ->
+            k ++ v
+
+        _ ->
+            k ++ "." ++ v
 
 
 {-| Takes PostgrestParams and returns a query string such as
