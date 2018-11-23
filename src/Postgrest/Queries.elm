@@ -1,5 +1,5 @@
 module Postgrest.Queries exposing
-    ( Param, Params, PostgrestSelectable, ColumnOrder
+    ( Param, Params, Selectable, ColumnOrder
     , Operator
     , select
     , allAttributes
@@ -47,7 +47,7 @@ module Postgrest.Queries exposing
 
 # Types
 
-@docs Param, Params, PostgrestSelectable, ColumnOrder
+@docs Param, Params, Selectable, ColumnOrder
 @docs Operator
 
 
@@ -134,7 +134,7 @@ type alias Params =
 type Param
     = Param String Operator
     | NestedParam String Param
-    | Select (List PostgrestSelectable)
+    | Select (List Selectable)
     | Limit Int
     | Offset Int
     | Order (List ColumnOrder)
@@ -204,7 +204,7 @@ param =
         ]
 
 -}
-select : List PostgrestSelectable -> Param
+select : List Selectable -> Param
 select =
     Select
 
@@ -490,21 +490,21 @@ type alias ResourceName =
 
 {-| A type representing which attributes and resources you want to select.
 -}
-type PostgrestSelectable
+type Selectable
     = Attribute String
-    | Resource ResourceName (List PostgrestSelectable)
+    | Resource ResourceName (List Selectable)
 
 
 {-| When you want to select a certain column.
 -}
-attribute : String -> PostgrestSelectable
+attribute : String -> Selectable
 attribute =
     Attribute
 
 
 {-| When you want to select a nested resource.
 -}
-resource : ResourceName -> List PostgrestSelectable -> PostgrestSelectable
+resource : ResourceName -> List Selectable -> Selectable
 resource =
     Resource
 
@@ -528,7 +528,7 @@ list values =
     ]
 
 -}
-attributes : List String -> List PostgrestSelectable
+attributes : List String -> List Selectable
 attributes =
     List.map Attribute
 
@@ -537,7 +537,7 @@ attributes =
 to select attributes of a resource or override default parameters in another function
 since postgrest returns all attributes by default.
 -}
-allAttributes : List PostgrestSelectable
+allAttributes : List Selectable
 allAttributes =
     attributes [ "*" ]
 
@@ -578,7 +578,7 @@ postgrestParamValue p =
 
         Select attrs ->
             attrs
-                |> List.map stringifyPostgrestSelect
+                |> List.map stringifySelect
                 |> String.join ","
 
         Limit i ->
@@ -743,8 +743,8 @@ stringifyValue quotes val =
                 |> String.join ","
 
 
-stringifyPostgrestSelect : PostgrestSelectable -> String
-stringifyPostgrestSelect postgrestSelect =
+stringifySelect : Selectable -> String
+stringifySelect postgrestSelect =
     case postgrestSelect of
         Attribute attr ->
             attr
@@ -758,7 +758,7 @@ stringifyPostgrestSelect postgrestSelect =
                     resourceName
                         ++ "("
                         ++ (attrs
-                                |> List.map stringifyPostgrestSelect
+                                |> List.map stringifySelect
                                 |> String.join ","
                            )
                         ++ ")"
