@@ -6,25 +6,25 @@ import Test exposing (..)
 
 
 matching =
-    [ ( "age=lt.13", [ param "age" <| lt 13 ] )
+    [ ( "age=lt.13", [ param "age" <| lt <| int 13 ] )
     , ( "age=gte.18&student=is.true"
-      , [ param "age" <| gte 18
+      , [ param "age" <| gte <| int 18
         , param "student" <| true
         ]
       )
     , ( "or=(age.gte.14,age.lte.18)"
       , [ or
-            [ param "age" <| gte 14
-            , param "age" <| lte 18
+            [ param "age" <| gte <| int 14
+            , param "age" <| lte <| int 18
             ]
         ]
       )
     , ( "and=(grade.gte.90,student.is.true,or(age.gte.14,age.is.null))"
       , [ and
-            [ param "grade" <| gte 90
+            [ param "grade" <| gte <| int 90
             , param "student" <| true
             , or
-                [ param "age" <| gte 14
+                [ param "age" <| gte <| int 14
                 , param "age" <| null
                 ]
             ]

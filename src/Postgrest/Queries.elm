@@ -326,10 +326,10 @@ after the equal sign.
 -}
 type Operator
     = Eq Value
-    | GT Float
-    | GTE Float
-    | LT Float
-    | LTE Float
+    | GT Value
+    | GTE Value
+    | LT Value
+    | LTE Value
     | Neq Value
     | Like String
     | Ilike String
@@ -433,28 +433,28 @@ neq =
 
 {-| Used to indicate you need a column to be less than a certain value.
 -}
-lt : Float -> Operator
+lt : Value -> Operator
 lt =
     LT
 
 
 {-| Used to indicate you need a column to be greater than a certain value.
 -}
-gt : Float -> Operator
+gt : Value -> Operator
 gt =
     GT
 
 
 {-| Used to indicate you need a column to be less than or equal than a certain value.
 -}
-lte : Float -> Operator
+lte : Value -> Operator
 lte =
     LTE
 
 
 {-| Used to indicate you need a column to be greater than or equal than a certain value.
 -}
-gte : Float -> Operator
+gte : Value -> Operator
 gte =
     GTE
 
@@ -678,16 +678,16 @@ stringifyClause operator =
             "is.null"
 
         LT val ->
-            "lt." ++ String.fromFloat val
+            "lt." ++ stringifyQuoted val
 
         LTE val ->
-            "lte." ++ String.fromFloat val
+            "lte." ++ stringifyQuoted val
 
         GT val ->
-            "gt." ++ String.fromFloat val
+            "gt." ++ stringifyQuoted val
 
         GTE val ->
-            "gte." ++ String.fromFloat val
+            "gte." ++ stringifyQuoted val
 
         Not o ->
             "not." ++ stringifyClause o

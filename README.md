@@ -5,7 +5,7 @@ Easily construct [Postgrest queries](http://postgrest.org/en/v5.1/api.html#horiz
 ```elm
 import Postgrest.Queries as P
 
-selection : PostgrestParam
+selection : Param
 selection =
   P.select
     [ P.attribute "id"
