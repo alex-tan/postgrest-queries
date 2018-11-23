@@ -1,5 +1,5 @@
 module Postgrest.Queries exposing
-    ( PostgrestParam, PostgrestParams, PostgrestSelectable, ColumnOrder
+    ( Param, Params, PostgrestSelectable, ColumnOrder
     , Operator
     , select
     , allAttributes
@@ -47,7 +47,7 @@ module Postgrest.Queries exposing
 
 # Types
 
-@docs PostgrestParam, PostgrestParams, PostgrestSelectable, ColumnOrder
+@docs Param, Params, PostgrestSelectable, ColumnOrder
 @docs Operator
 
 
@@ -123,27 +123,23 @@ import Dict exposing (Dict)
 import Url
 
 
-type alias Params =
-    List ( String, String )
-
-
 {-| A collection of parameters that make up a postgrest request.
 -}
-type alias PostgrestParams =
-    List PostgrestParam
+type alias Params =
+    List Param
 
 
 {-| An individual postgrest parameter.
 -}
-type PostgrestParam
+type Param
     = Param String Operator
-    | NestedParam String PostgrestParam
+    | NestedParam String Param
     | Select (List PostgrestSelectable)
     | Limit Int
     | Offset Int
     | Order (List ColumnOrder)
-    | Or (List PostgrestParam)
-    | And (List PostgrestParam)
+    | Or (List Param)
+    | And (List Param)
 
 
 {-| When you want to specify an operator for a nested resource.
@@ -159,7 +155,7 @@ type PostgrestParam
     -- "select=*,actors(*)&actors.limit=10&actors.offset=2"
 
 -}
-nestedParam : String -> PostgrestParam -> PostgrestParam
+nestedParam : String -> Param -> Param
 nestedParam =
     NestedParam
 
@@ -173,14 +169,14 @@ not =
 
 {-| Join multiple conditions together with or.
 -}
-or : List PostgrestParam -> PostgrestParam
+or : List Param -> Param
 or =
     Or
 
 
 {-| Join multiple conditions together with and.
 -}
-and : List PostgrestParam -> PostgrestParam
+and : List Param -> Param
 and =
     And
 
@@ -190,7 +186,7 @@ and =
     param "name" (eq (string "John"))
 
 -}
-param : String -> Operator -> PostgrestParam
+param : String -> Operator -> Param
 param =
     Param
 
@@ -208,7 +204,7 @@ param =
         ]
 
 -}
-select : List PostgrestSelectable -> PostgrestParam
+select : List PostgrestSelectable -> Param
 select =
     Select
 
@@ -218,14 +214,14 @@ select =
     limit 10
 
 -}
-limit : Int -> PostgrestParam
+limit : Int -> Param
 limit =
     Limit
 
 
 {-| Offset
 -}
-offset : Int -> PostgrestParam
+offset : Int -> Param
 offset =
     Offset
 
@@ -237,7 +233,7 @@ offset =
     order (desc "name")
 
 -}
-order : List ColumnOrder -> PostgrestParam
+order : List ColumnOrder -> Param
 order =
     Order
 
@@ -546,7 +542,7 @@ allAttributes =
     attributes [ "*" ]
 
 
-postgrestParamKey : PostgrestParam -> String
+postgrestParamKey : Param -> String
 postgrestParamKey p =
     case p of
         Limit i ->
@@ -574,7 +570,7 @@ postgrestParamKey p =
             r ++ "." ++ postgrestParamKey param_
 
 
-postgrestParamValue : PostgrestParam -> String
+postgrestParamValue : Param -> String
 postgrestParamValue p =
     case p of
         Param _ clause ->
@@ -641,7 +637,7 @@ catMaybes =
     List.filterMap identity
 
 
-wrapConditions : PostgrestParams -> String
+wrapConditions : Params -> String
 wrapConditions =
     List.map (normalizeParam >> paramToInnerString)
         >> String.join ","
@@ -768,19 +764,19 @@ stringifyPostgrestSelect postgrestSelect =
                         ++ ")"
 
 
-dictifyParams : PostgrestParams -> Dict String PostgrestParam
+dictifyParams : Params -> Dict String Param
 dictifyParams =
     List.map (\p -> ( postgrestParamKey p, p )) >> Dict.fromList
 
 
-{-| Takes PostgrestParams and returns the parameters as a list of (Key, Value) strings.
+{-| Takes Params and returns the parameters as a list of (Key, Value) strings.
 -}
-normalizeParams : PostgrestParams -> List ( String, String )
+normalizeParams : Params -> List ( String, String )
 normalizeParams =
     List.map normalizeParam
 
 
-normalizeParam : PostgrestParam -> ( String, String )
+normalizeParam : Param -> ( String, String )
 normalizeParam p =
     ( postgrestParamKey p, postgrestParamValue p )
 
@@ -788,7 +784,7 @@ normalizeParam p =
 {-| Takes a default set of params and a custom set of params and prefers the second set.
 Useful when you're constructing reusable functions that make similar queries.
 -}
-combineParams : PostgrestParams -> PostgrestParams -> PostgrestParams
+combineParams : Params -> Params -> Params
 combineParams defaults override =
     Dict.union
         (dictifyParams override)
@@ -814,10 +810,10 @@ paramToInnerString ( k, v ) =
             k ++ "." ++ v
 
 
-{-| Takes PostgrestParams and returns a query string such as
+{-| Takes Params and returns a query string such as
 `foo=eq.bar&baz=is.true`
 -}
-toQueryString : PostgrestParams -> String
+toQueryString : Params -> String
 toQueryString =
     normalizeParams
         >> List.map paramToString
