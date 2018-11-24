@@ -99,7 +99,7 @@ matching =
             [ attribute "*"
             , resource "roles" [ attribute "*" ]
             ]
-        , nestedParam "roles" <|
+        , nestedParam [ "roles" ] <|
             or
                 [ param "character" <| eq <| string "Gummo"
                 , param "character" <| eq <| string "Zeppo"
@@ -111,8 +111,8 @@ matching =
             [ attribute "*"
             , resource "actors" allAttributes
             ]
-        , nestedParam "actors" <| limit 10
-        , nestedParam "actors" <| offset 2
+        , nestedParam [ "actors" ] <| limit 10
+        , nestedParam [ "actors" ] <| offset 2
         ]
       )
     , ( "a=like.\"a*c\""
@@ -138,4 +138,25 @@ suite =
                                 Expect.equal v (toQueryString s)
                     )
             )
+        , describe "nested param options"
+            [ test "nested params options" <|
+                \_ ->
+                    let
+                        actual =
+                            [ P.select
+                                [ P.resource "sites"
+                                    [ P.resourceWithParams "streams"
+                                        [ P.order [ P.asc "name" ]
+                                        ]
+                                        allAttributes
+                                    ]
+                                ]
+                            ]
+                                |> toQueryString
+
+                        expected =
+                            "select=sites(streams(*))&sites.streams.order=name.asc"
+                    in
+                    Expect.equal actual expected
+            ]
         ]

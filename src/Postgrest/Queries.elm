@@ -6,6 +6,7 @@ module Postgrest.Queries exposing
     , attribute
     , attributes
     , resource
+    , resourceWithParams
     , combineParams
     , normalizeParams
     , toQueryString
@@ -58,6 +59,7 @@ module Postgrest.Queries exposing
 @docs attribute
 @docs attributes
 @docs resource
+@docs resourceWithParams
 
 
 # Converting/combining into something usable
@@ -142,22 +144,23 @@ type Param
     | And (List Param)
 
 
-{-| When you want to specify an operator for a nested resource.
+{-| When you want to specify an operator for a nested resource manually.
+It is recommended to use resourceWithParams though.
 
     [ select
         [ attribute "*"
         , resource "actors" allAttributes
         ]
-    , nestedParam "actors" <| limit 10
-    , nestedParam "actors" <| offset 2
+    , nestedParam [ "actors" ] <| limit 10
+    , nestedParam [ "actors" ] <| offset 2
     ]
     |> toQueryString
     -- "select=*,actors(*)&actors.limit=10&actors.offset=2"
 
 -}
-nestedParam : String -> Param -> Param
-nestedParam =
-    NestedParam
+nestedParam : List String -> Param -> Param
+nestedParam path =
+    NestedParam (String.join "." path)
 
 
 {-| Negate a condition.
@@ -492,7 +495,7 @@ type alias ResourceName =
 -}
 type Selectable
     = Attribute String
-    | Resource ResourceName (List Selectable)
+    | Resource ResourceName (List Param) (List Selectable)
 
 
 {-| When you want to select a certain column.
@@ -502,10 +505,32 @@ attribute =
     Attribute
 
 
-{-| When you want to select a nested resource.
+{-| When you want to select a nested resource with no special parameters for the nested
+resources. If you do, see `resourceWithParams`.
 -}
 resource : ResourceName -> List Selectable -> Selectable
-resource =
+resource name selectable =
+    Resource name [] selectable
+
+
+{-| When you want to select a nested resource with special praameters.
+
+    [ P.select
+        [ P.resource "sites"
+            [ P.resourceWithParams "streams"
+                [ P.order [ P.asc "name" ]
+                ]
+                allAttributes
+            ]
+        ]
+    ]
+        |> toQueryString
+
+    -- select=sites(streams(*))&sites.streams.order=name.asc
+
+-}
+resourceWithParams : ResourceName -> Params -> List Selectable -> Selectable
+resourceWithParams =
     Resource
 
 
@@ -639,7 +664,8 @@ catMaybes =
 
 wrapConditions : Params -> String
 wrapConditions =
-    List.map (normalizeParam >> paramToInnerString)
+    List.concatMap normalizeParam
+        >> List.map paramToInnerString
         >> String.join ","
         >> surroundInParens
 
@@ -749,7 +775,7 @@ stringifySelect postgrestSelect =
         Attribute attr ->
             attr
 
-        Resource resourceName attrs ->
+        Resource resourceName _ attrs ->
             case attrs of
                 [] ->
                     resourceName
@@ -773,12 +799,45 @@ dictifyParams =
 -}
 normalizeParams : Params -> List ( String, String )
 normalizeParams =
-    List.map normalizeParam
+    List.concatMap normalizeParam
 
 
-normalizeParam : Param -> ( String, String )
+normalizeParam : Param -> List ( String, String )
 normalizeParam p =
-    ( postgrestParamKey p, postgrestParamValue p )
+    case p of
+        Select selection ->
+            ( postgrestParamKey p, postgrestParamValue p ) :: selectionParams selection
+
+        _ ->
+            [ ( postgrestParamKey p, postgrestParamValue p ) ]
+
+
+selectionParams : List Selectable -> List ( String, String )
+selectionParams =
+    List.concatMap (selectionParam [])
+
+
+selectionParam : List String -> Selectable -> List ( String, String )
+selectionParam context s =
+    case s of
+        Attribute _ ->
+            []
+
+        Resource name options nested ->
+            let
+                newContext =
+                    context ++ [ name ]
+            in
+            List.map
+                (\item ->
+                    let
+                        p =
+                            nestedParam newContext item
+                    in
+                    ( postgrestParamKey p, postgrestParamValue p )
+                )
+                options
+                ++ List.concatMap (selectionParam newContext) nested
 
 
 {-| Takes a default set of params and a custom set of params and prefers the second set.
