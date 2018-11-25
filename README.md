@@ -5,16 +5,18 @@ Easily construct [Postgrest queries](http://postgrest.org/en/v5.1/api.html#horiz
 ```elm
 import Postgrest.Queries as P
 
-selection : Param
-selection =
-  P.select
+[ P.select
+  [ P.attribute "id"
+  , P.attribute "name"
+  , P.resourceWithParams "children"
+    [ P.order [P.asc "name"] ]
     [ P.attribute "id"
-    , P.attribute "foo_level"
-    , P.resource "bars"
-      [ P.attribute "id"
-      , P.attribute "name"
-      ] 
-    ]
+    , P.attribute "name"
+    ] 
+  ]
+]
+|> P.toQueryString
+-- select=id,name,children(id,name)&children.order=name.asc
 
 queryParams : String
 queryParams =

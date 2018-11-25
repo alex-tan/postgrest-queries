@@ -164,6 +164,12 @@ nestedParam path =
 
 
 {-| Negate a condition.
+
+    [ param "my_tsv" <| not <| phfts (Just "english") "The Fat Cats"
+    ]
+    |> toQueryString
+    -- my_tsv=not.phfts(english).The%20Fat%20Cats
+
 -}
 not : Operator -> Operator
 not =
@@ -171,6 +177,16 @@ not =
 
 
 {-| Join multiple conditions together with or.
+
+    [ or
+        [ param "age" <| gte <| int 14
+        , param "age" <| lte <| int 18
+        ]
+    ]
+    |> toQueryString
+
+    -- or=(age.gte.14,age.lte.18)
+
 -}
 or : List Param -> Param
 or =
@@ -178,6 +194,20 @@ or =
 
 
 {-| Join multiple conditions together with and.
+
+    [ and
+        [ param "grade" <| gte <| int 90
+        , param "student" <| true
+        , or
+            [ param "age" <| gte <| int 14
+            , param "age" <| null
+            ]
+        ]
+    ]
+    |> toQueryString
+
+    -- and=(grade.gte.90,student.is.true,or(age.gte.14,age.is.null))
+
 -}
 and : List Param -> Param
 and =
