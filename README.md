@@ -1,5 +1,7 @@
 # alex-tan/postgrest-queries
 
+[![Build Status](https://travis-ci.org/alex-tan/postgrest-queries.svg?branch=master)](https://travis-ci.org/alex-tan/postgrest-queries)
+
 Easily construct [Postgrest queries](http://postgrest.org/en/v5.1/api.html#horizontal-filtering-rows) using Elm.
 
 ```elm
