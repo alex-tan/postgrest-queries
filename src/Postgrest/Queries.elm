@@ -294,7 +294,8 @@ int =
     Int
 
 
-{-| A type to specify whether you want an order to be ascending or descending.
+{-| A type to specify whether you want an order to be ascending or descending, and
+optionally whether you want nulls to be first or last.
 -}
 type ColumnOrder
     = Asc String (Maybe NullOption)
@@ -306,7 +307,7 @@ type NullOption
     | NullsLast
 
 
-{-| Sort nulls first.
+{-| Sort so that nulls will come first.
 
     order [ asc "age" |> nullsfirst ]
 
@@ -321,7 +322,7 @@ nullsfirst o =
             Desc s (Just NullsFirst)
 
 
-{-| Sort nulls last.
+{-| Sort so that nulls will come last.
 
     order [ asc "age" |> nullslast ]
 
@@ -489,6 +490,10 @@ gte =
 
 
 {-| Used to indicate you need a column to be within a certain list of values.
+
+    param "name" <| inList string [ "Chico", "Harpo", "Groucho" ]
+    name=in.(\"Chico\",\"Harpo\",\"Groucho\")"
+
 -}
 inList : (a -> Value) -> List a -> Operator
 inList toValue l =
@@ -504,6 +509,11 @@ value =
 
 
 {-| When you need a column value to be true
+
+    -- foo=is.true
+    [ P.param "foo" P.true ]
+        |> toQueryString
+
 -}
 true : Operator
 true =
@@ -511,6 +521,11 @@ true =
 
 
 {-| When you need a column value to be false
+
+    -- foo=is.false
+    [ P.param "foo" P.false ]
+        |> toQueryString
+
 -}
 false : Operator
 false =
@@ -522,6 +537,7 @@ type alias ResourceName =
 
 
 {-| A type representing which attributes and resources you want to select.
+It also contains parameters that target nested resources.
 -}
 type Selectable
     = Attribute String
@@ -536,7 +552,7 @@ attribute =
 
 
 {-| When you want to select a nested resource with no special parameters for the nested
-resources. If you do, see `resourceWithParams`.
+resources. If you do want to specify parameters, see `resourceWithParams`.
 -}
 resource : ResourceName -> List Selectable -> Selectable
 resource name selectable =
