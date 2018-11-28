@@ -21,9 +21,8 @@ import Postgrest.Queries as P
 queryParams : String
 queryParams =
   [ P.limit 10
-  , P.order <| P.asc "foo_level"
-  , selection
+  , P.order [ P.asc "foo_level" ]
   ]
   |> P.toQueryString
-  -- limit=10&order=foo_level.asc&select=id,foo_level,bars(id,name)
+  -- limit=10&order=foo_level.asc
 ```
