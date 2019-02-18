@@ -3,7 +3,7 @@
     "name": "alex-tan/postgrest-queries",
     "summary": "Library to construct postgrest queries",
     "license": "MIT",
-    "version": "7.0.2",
+    "version": "7.0.3",
     "exposed-modules": [
         "Postgrest.Queries"
     ],
