@@ -492,7 +492,8 @@ gte =
 {-| Used to indicate you need a column to be within a certain list of values.
 
     param "name" <| inList string [ "Chico", "Harpo", "Groucho" ]
-    name=in.(\"Chico\",\"Harpo\",\"Groucho\")"
+
+    -- name=in.(\"Chico\",\"Harpo\",\"Groucho\")"
 
 -}
 inList : (a -> Value) -> List a -> Operator
