@@ -41,6 +41,7 @@ module Postgrest.Queries exposing
     , plfts
     , phfts
     , fts
+    , Value
     )
 
 {-|
