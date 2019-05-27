@@ -1,5 +1,5 @@
 module Postgrest.Queries exposing
-    ( Param, Params, Selectable, ColumnOrder
+    ( Param, Params, Selectable, ColumnOrder, Value
     , Operator
     , select
     , allAttributes
@@ -41,7 +41,6 @@ module Postgrest.Queries exposing
     , plfts
     , phfts
     , fts
-    , Value
     )
 
 {-|
@@ -49,7 +48,7 @@ module Postgrest.Queries exposing
 
 # Types
 
-@docs Param, Params, Selectable, ColumnOrder
+@docs Param, Params, Selectable, ColumnOrder, Value
 @docs Operator
 
 
@@ -272,8 +271,7 @@ order =
     Order
 
 
-{-| Strings, ints and lists need to be normalized into postgrest values
-so that the library can format them correctly in our queries.
+{-| Type that can be represented in the queries: strings, ints and lists.
 -}
 type Value
     = String String
