@@ -8,6 +8,7 @@ module Postgrest.Queries exposing
     , resource
     , resourceWithParams
     , combineParams
+    , concatParams
     , normalizeParams
     , toQueryString
     , param
@@ -65,6 +66,7 @@ module Postgrest.Queries exposing
 # Converting/combining into something usable
 
 @docs combineParams
+@docs concatParams
 @docs normalizeParams
 @docs toQueryString
 
@@ -896,6 +898,17 @@ combineParams defaults override =
         (dictifyParams override)
         (dictifyParams defaults)
         |> Dict.values
+
+
+{-| Takes a list of Params and combines them, preferring the last sets first.
+-}
+concatParams : List Params -> Params
+concatParams =
+    List.foldl
+        (\a acc ->
+            combineParams acc a
+        )
+        []
 
 
 paramToString : ( String, String ) -> String

@@ -156,4 +156,33 @@ suite =
                     in
                     Expect.equal actual expected
             ]
+        , describe "combine params"
+            [ test "last ones take precedent" <|
+                \_ ->
+                    let
+                        sortParams =
+                            normalizeParams >> List.sortBy Tuple.first
+
+                        expected =
+                            [ P.param "a" <| eqString "1"
+                            , P.param "c" <| eqString "3"
+                            , P.param "b" <| eqString "5"
+                            ]
+                                |> sortParams
+
+                        eqString =
+                            P.eq << P.string
+
+                        set =
+                            [ [ P.param "a" <| eqString "1", P.param "b" <| eqString "2" ]
+                            , [ P.param "c" <| eqString "3", P.param "b" <| eqString "4" ]
+                            , [ P.param "b" <| eqString "5" ]
+                            ]
+
+                        actual =
+                            P.concatParams set
+                                |> sortParams
+                    in
+                    Expect.equal expected actual
+            ]
         ]
