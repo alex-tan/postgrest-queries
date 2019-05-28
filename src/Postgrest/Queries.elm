@@ -1,5 +1,5 @@
 module Postgrest.Queries exposing
-    ( Param, Params, Selectable, ColumnOrder
+    ( Param, Params, Selectable, ColumnOrder, Value
     , Operator
     , select
     , allAttributes
@@ -8,6 +8,7 @@ module Postgrest.Queries exposing
     , resource
     , resourceWithParams
     , combineParams
+    , concatParams
     , normalizeParams
     , toQueryString
     , param
@@ -48,7 +49,7 @@ module Postgrest.Queries exposing
 
 # Types
 
-@docs Param, Params, Selectable, ColumnOrder
+@docs Param, Params, Selectable, ColumnOrder, Value
 @docs Operator
 
 
@@ -65,6 +66,7 @@ module Postgrest.Queries exposing
 # Converting/combining into something usable
 
 @docs combineParams
+@docs concatParams
 @docs normalizeParams
 @docs toQueryString
 
@@ -271,8 +273,7 @@ order =
     Order
 
 
-{-| Strings, ints and lists need to be normalized into postgrest values
-so that the library can format them correctly in our queries.
+{-| Type that can be represented in the queries: strings, ints and lists.
 -}
 type Value
     = String String
@@ -897,6 +898,17 @@ combineParams defaults override =
         (dictifyParams override)
         (dictifyParams defaults)
         |> Dict.values
+
+
+{-| Takes a list of Params and combines them, preferring the last sets first.
+-}
+concatParams : List Params -> Params
+concatParams =
+    List.foldl
+        (\a acc ->
+            combineParams acc a
+        )
+        []
 
 
 paramToString : ( String, String ) -> String
