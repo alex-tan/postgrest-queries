@@ -1,5 +1,9 @@
 # alex-tan/postgrest-queries
 
+# NOTE: This package has been moved to [alex-tan/postgrest-client](https://github.com/alex-tan/postgrest-client)
+
+The package should be a drop in replacement for the lates version of this package.
+
 [![Build Status](https://travis-ci.org/alex-tan/postgrest-queries.svg?branch=master)](https://travis-ci.org/alex-tan/postgrest-queries)
 
 This package allows you to easily construct [Postgrest query strings](http://postgrest.org/en/v5.1/api.html#horizontal-filtering-rows) using Elm.
