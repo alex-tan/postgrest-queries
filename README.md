@@ -2,7 +2,7 @@
 
 # NOTE: This package has been moved to [alex-tan/postgrest-client](https://github.com/alex-tan/postgrest-client)
 
-The package should be a drop in replacement for the lates version of this package.
+postgrest-client should be a drop in replacement for the latest version of this package.
 
 [![Build Status](https://travis-ci.org/alex-tan/postgrest-queries.svg?branch=master)](https://travis-ci.org/alex-tan/postgrest-queries)
 
